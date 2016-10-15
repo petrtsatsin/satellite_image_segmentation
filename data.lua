@@ -4,7 +4,7 @@ require 'image'
 require 'xlua'
 local gm = require 'graphicsmagick'
 
-data_path = "./data"
+data_path = "../data"
 image_size = 46
 validRatio = 0.1
 testRatio  = 0.1
@@ -61,15 +61,15 @@ local function getData(data_path)
     trainData = {data = trainInput, labels = trainTarget}
     testData = {data = testInput, labels = testTarget}
     validData = {data = validInput, labels = validTarget}
-    torch.save('./data/train.t7', trainData)
-    torch.save('./data/test.t7', testData)
-    torch.save('./data/valid.t7', validData)
+    torch.save(paths.concat(opt.save,'train.t7'), trainData)
+    torch.save(paths.concat(opt.save,'test.t7'), testData)
+    torch.save(paths.concat(opt.save,'valid.t7'), validData)
     return  trainData, validData
 end
 
 if data_cache then
-   trainData = torch.load('./data/train.t7')
-   validData = torch.load('./data/valid.t7')
+   trainData = torch.load(paths.concat(opt.save,'train.t7'))
+   validData = torch.load(paths.concat(opt.save,'valid.t7'))
 else 
    trainData, validData = getData(data_path)
 end
