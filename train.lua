@@ -62,6 +62,8 @@ local function train(trainData)
    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize ..
 ']')
    local loss_err = 0 
+   local hflips = 0
+   local vflips = 0
    for t = 1, trainData.size(),opt.batchSize do
       xlua.progress(t, trainData.size())
       collectgarbage()
@@ -70,22 +72,40 @@ local function train(trainData)
       end
       local idx = 1
       for i = t,t+opt.batchSize-1 do
-         x[idx] = trainData.data[shuffle[i]]
-         yt[idx] = trainData.labels[shuffle[i]]
-         idx = idx + 1
-      end
+        local flip = math.random(2)==1
+        local hflip = math.random(2)==1
+        local img = trainData.data[shuffle[i]]
+        local ytt = trainData.labels[shuffle[i]]
+        if flip then
+            if hflip then
+                x[idx] = image.hflip(trainData.data[shuffle[i]])
+                yt[idx] = image.hflip(trainData.labels[shuffle[i]])
+                hflips = hflips + 1
+            else 
+                x[idx] = image.vflip(trainData.data[shuffle[i]])
+                yt[idx] = image.vflip(trainData.labels[shuffle[i]])
+                vflips = vflips + 1
+            end
+        else
+            x[idx] = trainData.data[shuffle[i]]
+            yt[idx] = trainData.labels[shuffle[i]]
+        end
+        idx = idx + 1
+    end
       local eval_E = function(w)
          dE_dw:zero()
          local y = model:forward(x)
          local E = loss:forward(y,yt:viewAs(y))   
          local dE_dy = loss:backward(y,yt:viewAs(y))   
-         dE_dy:mul(x:size(1))
+         --dE_dy:mul(x:size(1))
          model:backward(x,dE_dy)
          loss_err = loss_err + E
          return E,dE_dw
       end
       optim.sgd(eval_E, w, optimState)
    end
+   print("vflips: " .. vflips / trainData:size())
+   print("hflips: " .. hflips / trainData:size())
    time = sys.clock() - time
    time = time / trainData:size()
    print("\n==> time to learn 1 sample = " .. (time*1000) .. 'ms')

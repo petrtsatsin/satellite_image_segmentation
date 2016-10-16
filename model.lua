@@ -2,59 +2,76 @@ require 'torch'
 require 'image'
 require 'nn'
 
-local nfeats = 3
-local width = 46
-local height = 46
-local nstates = {32,64,128,128}
-local filtsize = {7,7,7}
-local poolsize = 2
-
+local width = 64
+local height = 64
 print(sys.COLORS.red ..  '==> construct CNN')
 
-local CNN = nn.Sequential()
-
-CNN:add(nn.SpatialConvolutionMM(nfeats, nstates[1], filtsize[1], filtsize[1]))
-CNN:add(nn.ReLU())
-CNN:add(nn.SpatialMaxPooling(poolsize,poolsize,poolsize,poolsize))
-CNN:add(nn.SpatialConvolutionMM(nstates[1], nstates[2], filtsize[2],
-filtsize[2]))
-CNN:add(nn.ReLU())
-CNN:add(nn.SpatialMaxPooling(poolsize,poolsize,poolsize,poolsize))
-CNN:add(nn.SpatialConvolutionMM(nstates[2], nstates[3], filtsize[3],
-filtsize[3]))
-
-local classifier = nn.Sequential()
-
-classifier:add(nn.Reshape(nstates[3]))
-classifier:add(nn.Linear(nstates[3], nstates[4]))
-classifier:add(nn.Linear(nstates[4], width*height))
-
-for _,layer in ipairs(CNN.modules) do
-   if layer.bias then
-      layer.bias:fill(.2)
-      if i == #CNN.modules-1 then
-         layer.bias:zero()
-      end
-   end
+local vgg = nn.Sequential()
+-- building block
+local function ConvBNReLU(nInputPlane, nOutputPlane)
+  vgg:add(nn.SpatialConvolution(nInputPlane, nOutputPlane, 3,3, 1,1, 1,1))
+  vgg:add(nn.SpatialBatchNormalization(nOutputPlane,1e-3))
+  vgg:add(nn.ReLU(true))
+  return vgg
 end
 
-model = nn.Sequential()
-model:add(CNN)
-model:add(classifier)
+local MaxPooling = nn.SpatialMaxPooling
+
+ConvBNReLU(3,64):add(nn.Dropout(0.3))
+ConvBNReLU(64,64)
+vgg:add(MaxPooling(2,2,2,2):ceil())
+ConvBNReLU(64,128):add(nn.Dropout(0.4))
+ConvBNReLU(128,128)
+vgg:add(MaxPooling(2,2,2,2):ceil())
+ConvBNReLU(128,256):add(nn.Dropout(0.4))
+ConvBNReLU(256,256):add(nn.Dropout(0.4))
+ConvBNReLU(256,256)
+vgg:add(MaxPooling(2,2,2,2):ceil())
+ConvBNReLU(256,512):add(nn.Dropout(0.4))
+ConvBNReLU(512,512):add(nn.Dropout(0.4))
+ConvBNReLU(512,512)
+vgg:add(MaxPooling(2,2,2,2):ceil())
+ConvBNReLU(512,512):add(nn.Dropout(0.4))
+ConvBNReLU(512,512):add(nn.Dropout(0.4))
+ConvBNReLU(512,512)
+vgg:add(MaxPooling(2,2,2,2):ceil())
+vgg:add(nn.View(512*4))
+vgg:add(nn.Linear(512*4, 64*64))
+
+--vgg:add(nn.Dropout(0.5))
+--vgg:add(nn.Linear(512,512))
+--vgg:add(nn.BatchNormalization(512))
+--vgg:add(nn.ReLU(true))
+--vgg:add(nn.Dropout(0.5))
+--vgg:add(nn.Linear(512,10))
+
+-- initialization from MSR
+local function MSRinit(net)
+  local function init(name)
+    for k,v in pairs(net:findModules(name)) do
+      local n = v.kW*v.kH*v.nOutputPlane
+      v.weight:normal(0,math.sqrt(2/n))
+      v.bias:zero()
+    end
+  end
+  init'nn.SpatialConvolution'
+end
+
+MSRinit(vgg)
 
 loss = nn.SoftMarginCriterion()
 
 print('==> model: ')
-print(model)
+print(vgg)
 
 if opt.type == 'cuda' then
-   model:cuda()
+   vgg:cuda()
    loss:cuda()
 end
 
 -- return package:
 return {
-   model = model,
+   model = vgg,
    loss = loss,
 }
 

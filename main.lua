@@ -8,7 +8,7 @@ opt = lapp[[
    -d,--learningRateDecay  (default 1e-7)        learning rate decay (in #
 samples)
    -w,--weightDecay        (default 1e-5)        L2 penalty on the weights
-   -m,--momentum           (default 0.1)         momentum
+   -m,--momentum           (default 0.9)         momentum
    -d,--dropout            (default 0.5)         dropout amount
    -b,--batchSize          (default 10)         batch size
    -t,--threads            (default 8)           number of threads
@@ -36,7 +36,7 @@ print('==> load modules')
 
 local data  = require 'data'
 local train = require 'train'
-local test  = require 'test'
+local test  = require 'valid'
 
 print('==> training!')
 
