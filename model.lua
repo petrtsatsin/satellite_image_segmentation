@@ -36,7 +36,8 @@ ConvBNReLU(512,512):add(nn.Dropout(0.4))
 ConvBNReLU(512,512)
 vgg:add(MaxPooling(2,2,2,2):ceil())
 vgg:add(nn.View(512*4))
-vgg:add(nn.Linear(512*4, 64*64))
+vgg:add(nn.Linear(512*4, 2*64*64))
+vgg:add(nn.View(2, 64, 64))
 
 --vgg:add(nn.Dropout(0.5))
 --vgg:add(nn.Linear(512,512))
@@ -59,7 +60,7 @@ end
 
 MSRinit(vgg)
 
-loss = nn.SoftMarginCriterion()
+loss = cudnn.SpatialCrossEntropyCriterion()
 
 print('==> model: ')
 print(vgg)

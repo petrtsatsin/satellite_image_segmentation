@@ -4,12 +4,12 @@ require 'image'
 require 'xlua'
 local gm = require 'graphicsmagick'
 
---data_path = "../data"
-data_path = "../data/test"
+data_path = "../data"
+--data_path = "../data/test"
 image_size = 64
 validRatio = 0.1
 testRatio  = 0.1
-data_cache = false
+data_cache = true
 local imgNetPreproc = true
 local mean = { 0.485, 0.456, 0.406 }
 local std = { 0.229, 0.224, 0.225 }
@@ -40,7 +40,7 @@ local function getData(data_path)
     local size = tiles:size()
     local shuffle = torch.randperm(size) -- shuffle the data
     local input  = torch.FloatTensor(size, 3, image_size, image_size)
-    local target = torch.FloatTensor(size, image_size, image_size)
+    local target = torch.FloatTensor(size, 2, image_size, image_size)
 
     for i=1,tiles:size() do
         local img = preprocessImage(imageLoad(tiles:filename(i)))
@@ -53,11 +53,19 @@ local function getData(data_path)
     for i=1,masks:size() do
         local img = preprocessImage(imageLoad(masks:filename(i)))
         local idx = shuffle[i]
-        target[idx]:copy(img[3]:apply(function(x)
-                                      if x > 0 then
-                                          return 1
-                                      end
-                                    end))
+        local tmp = torch.FloatTensor(image_size, image_size)
+        tmp:copy(img[3]:apply(function(x)
+                                       if x > 0 then
+                                           return 1
+                                        end
+                                      end))
+        target[idx][2]:copy(tmp:apply(function(x)
+                                          if x > 0 then
+                                             return 0
+                                          else 
+                                             return 1
+                                          end
+                                      end))
         xlua.progress(i, size)
         collectgarbage()
     end

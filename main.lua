@@ -35,6 +35,7 @@ end
 print('==> load modules')
 
 local data  = require 'data'
+
 local train = require 'train'
 local test  = require 'valid'
 
